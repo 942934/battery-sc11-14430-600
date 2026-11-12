@@ -101,6 +101,32 @@ footer{text-align:center; color:var(--muted); font-size:.85rem; padding:10px 0 0
   margin-left:auto; flex:0 0 auto; border:none; background:none;
   font-size:1.05rem; line-height:1; cursor:pointer; color:#7a5b00; padding:0 2px;
 }
+
+.scan-btn{margin-top:10px; padding:8px 16px; font:inherit; font-size:.92rem;
+  border:1px solid #b9b9b9; border-radius:8px; background:#fff; color:#222; cursor:pointer;}
+.scan-btn:active{background:#efefef;}
+.scan-overlay{position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center; padding:16px;}
+.scan-overlay[hidden]{display:none;}
+.scan-panel{background:#fff; color:#222; border-radius:12px; max-width:420px; width:100%;
+  max-height:92vh; overflow:auto; padding:16px;}
+.scan-head{display:flex; align-items:center; gap:8px; font-weight:700; font-size:1rem;}
+.scan-head button{margin-left:auto; border:none; background:none; font-size:1.1rem;
+  line-height:1; cursor:pointer; color:#555; padding:2px;}
+.scan-view{position:relative; margin-top:12px; background:#000; border-radius:10px; overflow:hidden;}
+.scan-view video{display:block; width:100%; height:auto;}
+.scan-frame{position:absolute; left:50%; top:50%; width:64%; height:64%;
+  transform:translate(-50%,-50%); border:2px solid #4cd964; border-radius:10px;
+  box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
+.scan-hint{margin:10px 2px 0; font-size:.9rem; color:#555;}
+.scan-manual{margin-top:10px; padding-top:10px; border-top:1px solid #e3e3e3;}
+.scan-manual label{font-size:.9rem; color:#555; display:block;}
+.scan-manual-row{display:flex; gap:8px; margin-top:8px;}
+.scan-manual-row input{flex:1; min-width:0; font:inherit; padding:8px 10px;
+  border:1px solid #b9b9b9; border-radius:8px;}
+.scan-manual-row button{font:inherit; padding:8px 18px; border:1px solid #2b6cb0;
+  background:#2b6cb0; color:#fff; border-radius:8px; cursor:pointer;}
+.scan-err{margin:8px 2px 0; font-size:.88rem; color:#c0392b;}
 </style>
 </head>
 <body>
@@ -155,7 +181,7 @@ footer{text-align:center; color:var(--muted); font-size:.85rem; padding:10px 0 0
   <div class="item">
     <table class="kv">
       <tr><th>Product</th><td>Cylindrical Li-ion Cell 14430 600mAh INR14/43 3.7V 600mAh 2.22Wh</td></tr>
-      <tr><th>Date of manufacture</th><td data-trace="date">10/2026</td></tr>
+      <tr><th>Date of manufacture</th><td data-trace="date">10/2026</td></tr><tr><th></th><td><button type="button" class="scan-btn" id="scan-date-btn">Scan date code</button></td></tr>
       <tr><th>Capacity</th><td>600mAh</td></tr>
       <tr><th>Address</th><td>No. 166, Cuidun Road, High tech Zone, Jianhu County, Yancheng City, Jiangsu Province, China.</td></tr>
       <tr><th>Weight</th><td>16&#177;3g</td></tr>
@@ -276,6 +302,165 @@ window.__I18N__='{"bg":{"Usable extinguishing agent":"Подходящ пожа�
   });
   var q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
   if (q && D[q]) { sel.value = q; apply(q); } else { applyDate(); }
+})();
+</script>
+<div class="scan-overlay" id="scan-overlay" hidden>
+  <div class="scan-panel">
+    <div class="scan-head"><span id="scan-title">Scan the production date QR code</span>
+      <button type="button" id="scan-cancel" aria-label="Close">&#10005;</button></div>
+    <div class="scan-view"><video id="scan-video" playsinline muted></video>
+      <div class="scan-frame"></div></div>
+    <p class="scan-hint" id="scan-hint">Point the camera at the date QR code</p>
+    <div class="scan-manual">
+      <label for="scan-input" id="scan-manual-label">Or enter the date manually (YYYYMMDD)</label>
+      <div class="scan-manual-row">
+        <input id="scan-input" inputmode="numeric" autocomplete="off" placeholder="20261112">
+        <button type="button" id="scan-ok">OK</button>
+      </div>
+      <p class="scan-err" id="scan-err" hidden>Invalid date code</p>
+    </div>
+  </div>
+  <canvas id="scan-canvas" style="display:none"></canvas>
+</div>
+<script>
+(function(){
+  var I18N = {"en":{"btn":"Scan date code","title":"Scan the production date QR code","hint":"Point the camera at the date QR code","manual":"Or enter the date manually (YYYYMMDD)","ok":"OK","cancel":"Cancel","invalid":"Invalid date code"},"bg":{"btn":"Сканирайте кода на датата","title":"Сканирайте QR кода на датата на производство","hint":"Насочете камерата към QR кода с датата","manual":"Или въведете датата ръчно (ГГГГММДД)","ok":"OK","cancel":"Отказ","invalid":"Невалиден код на датата"},"hr":{"btn":"Skeniraj kod datuma","title":"Skenirajte QR kod datuma proizvodnje","hint":"Usmjerite kameru na QR kod s datumom","manual":"Ili ručno unesite datum (GGGGMMDD)","ok":"U redu","cancel":"Odustani","invalid":"Nevažeći kod datuma"},"cs":{"btn":"Naskenovat kód data","title":"Naskenujte QR kód data výroby","hint":"Namiřte kameru na QR kód s datem","manual":"Nebo zadejte datum ručně (RRRRMMDD)","ok":"OK","cancel":"Zrušit","invalid":"Neplatný kód data"},"da":{"btn":"Scan datokoden","title":"Scan QR-koden for produktionsdatoen","hint":"Ret kameraet mod QR-koden med datoen","manual":"Eller indtast datoen manuelt (ÅÅÅÅMMDD)","ok":"OK","cancel":"Annuller","invalid":"Ugyldig datokode"},"nl":{"btn":"Datumcode scannen","title":"Scan de QR-code van de productiedatum","hint":"Richt de camera op de QR-code met de datum","manual":"Of voer de datum handmatig in (JJJJMMDD)","ok":"OK","cancel":"Annuleren","invalid":"Ongeldige datumcode"},"et":{"btn":"Skaneeri kuupäeva kood","title":"Skaneeri tootmiskuupäeva QR-kood","hint":"Suunake kaamera kuupäeva QR-koodile","manual":"Või sisestage kuupäev käsitsi (AAAAKKPP)","ok":"OK","cancel":"Tühista","invalid":"Vigane kuupäevakood"},"fi":{"btn":"Skannaa päiväkoodi","title":"Skannaa tuotantopäivän QR-koodi","hint":"Suuntaa kamera päivän QR-koodiin","manual":"Tai syötä päivä manuaalisesti (VVVVKKPP)","ok":"OK","cancel":"Peruuta","invalid":"Virheellinen päiväkoodi"},"fr":{"btn":"Scanner le code de date","title":"Scannez le code QR de la date de fabrication","hint":"Dirigez la caméra vers le code QR de la date","manual":"Ou saisissez la date manuellement (AAAAMMJJ)","ok":"OK","cancel":"Annuler","invalid":"Code de date invalide"},"de":{"btn":"Datumscode scannen","title":"Scannen Sie den QR-Code des Produktionsdatums","hint":"Richten Sie die Kamera auf den Datums-QR-Code","manual":"Oder Datum manuell eingeben (JJJJMMTT)","ok":"OK","cancel":"Abbrechen","invalid":"Ungültiger Datumscode"},"el":{"btn":"Σάρωση κωδικού ημερομηνίας","title":"Σαρώστε τον QR κωδικό της ημερομηνίας παραγωγής","hint":"Στρέψτε την κάμερα στον QR κωδικό της ημερομηνίας","manual":"Ή εισάγετε την ημερομηνία χειροκίνητα (ΕΕΕΕΜΜΗΗ)","ok":"OK","cancel":"Άκυρο","invalid":"Μη έγκυρος κωδικός ημερομηνίας"},"hu":{"btn":"Dátumkód beolvasása","title":"Olvassa be a gyártási dátum QR-kódját","hint":"Irányítsa a kamerát a dátum QR-kódjára","manual":"Vagy adja meg a dátumot kézzel (ÉÉÉÉHHNN)","ok":"OK","cancel":"Mégse","invalid":"Érvénytelen dátumkód"},"ga":{"btn":"Scan an cód dáta","title":"Scan an cód QR dáta an táirgthe","hint":"Dírigh an ceamara ar an gcód QR dáta","manual":"Nó cuir an dáta isteach de láimh (BBBBMMDD)","ok":"OK","cancel":"Cealaigh","invalid":"Cód dáta neamhbhailí"},"it":{"btn":"Scansiona il codice data","title":"Scansiona il codice QR della data di produzione","hint":"Punta la fotocamera sul codice QR della data","manual":"Oppure inserisci la data manualmente (AAAAMMGG)","ok":"OK","cancel":"Annulla","invalid":"Codice data non valido"},"lv":{"btn":"Skenēt datuma kodu","title":"Skenējiet ražošanas datuma QR kodu","hint":"Vērsiet kameru pret datuma QR kodu","manual":"Vai ievadiet datumu manuāli (GGGGMMDD)","ok":"Labi","cancel":"Atcelt","invalid":"Nederīgs datuma kods"},"lt":{"btn":"Skanuoti datos kodą","title":"Skanuokite gamybos datos QR kodą","hint":"Nukreipite kamerą į datos QR kodą","manual":"Arba įveskite datą rankiniu būdu (AAAA-MM-DD)","ok":"Gerai","cancel":"Atšaukti","invalid":"Netinkamas datos kodas"},"mt":{"btn":"Iskannja l-kowċ tad-data","title":"Iskannja l-kowċ QR tad-data ta' produzzjoni","hint":"Diriġi l-kamera lejn il-kowċ QR tad-data","manual":"Jew daħħal id-data manwalment (SSSSMMGG)","ok":"OK","cancel":"Ikkanċella","invalid":"Kowċ tad-data invalidu"},"pl":{"btn":"Zeskanuj kod daty","title":"Zeskanuj kod QR daty produkcji","hint":"Skieruj kamerę na kod QR z datą","manual":"Lub wpisz datę ręcznie (RRRRMMDD)","ok":"OK","cancel":"Anuluj","invalid":"Nieprawidłowy kod daty"},"pt":{"btn":"Digitalizar o código de data","title":"Digitalize o código QR da data de fabrico","hint":"Aponte a câmara para o código QR da data","manual":"Ou introduza a data manualmente (AAAAMMDD)","ok":"OK","cancel":"Cancelar","invalid":"Código de data inválido"},"ro":{"btn":"Scanați codul datei","title":"Scanați codul QR al datei de producție","hint":"Îndreptați camera spre codul QR al datei","manual":"Sau introduceți data manual (AAAA-LL-ZZ)","ok":"OK","cancel":"Anulare","invalid":"Cod de dată nevalid"},"sk":{"btn":"Naskenovať kód dátumu","title":"Naskenujte QR kód dátumu výroby","hint":"Namierte kameru na QR kód s dátumom","manual":"Alebo zadajte dátum ručne (RRRRMMDD)","ok":"OK","cancel":"Zrušiť","invalid":"Neplatný kód dátumu"},"sl":{"btn":"Skeniraj kodo datuma","title":"Skenirajte QR kodo datuma proizvodnje","hint":"Usmerite kamero na QR kodo z datumom","manual":"Ali vnesite datum ročno (LLLLMMDD)","ok":"V redu","cancel":"Prekliči","invalid":"Neveljavna koda datuma"},"es":{"btn":"Escanear el código de fecha","title":"Escanee el código QR de la fecha de fabricación","hint":"Apunte la cámara al código QR de la fecha","manual":"O introduzca la fecha manualmente (AAAAMMDD)","ok":"OK","cancel":"Cancelar","invalid":"Código de fecha no válido"},"sv":{"btn":"Skanna datumkoden","title":"Skanna QR-koden för produktionsdatumet","hint":"Rikta kameran mot QR-koden med datumet","manual":"Eller ange datumet manuellt (ÅÅÅÅMMDD)","ok":"OK","cancel":"Avbryt","invalid":"Ogiltig datumkod"}};
+  function $(id){ return document.getElementById(id); }
+  var btn = $('scan-date-btn'), ov = $('scan-overlay'), video = $('scan-video');
+  var err = $('scan-err'), input = $('scan-input'), timer = 0, stream = null;
+  var detector = null, open = false;
+
+  function applyScanLang(){
+    var sel = $('lang-select');
+    var t = I18N[(sel && sel.value) || 'en'];
+    if (!t) return;
+    btn.textContent = t.btn;
+    $('scan-title').textContent = t.title;
+    $('scan-hint').textContent = t.hint;
+    $('scan-manual-label').textContent = t.manual;
+    $('scan-ok').textContent = t.ok;
+    $('scan-cancel').textContent = '\u2715';
+    if (!err.hidden) err.textContent = t.invalid;
+  }
+  var sel = $('lang-select');
+  if (sel) sel.addEventListener('change', applyScanLang);
+  applyScanLang();
+
+  function parseDate(t){
+    if (!t) return null;
+    t = String(t).trim();
+    var m = t.match(/[?&]d=(\d{8})/);
+    if (m) t = m[1];
+    if (/^\d{8}$/.test(t)) {
+      var y = +t.slice(0,4), mo = +t.slice(4,6), da = +t.slice(6,8);
+      if (y >= 2000 && y <= 2099 && mo >= 1 && mo <= 12 && da >= 1 && da <= 31) return t;
+      return null;
+    }
+    m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+    if (m) return parseDate(m[1] + ('0'+m[2]).slice(-2) + ('0'+m[3]).slice(-2));
+    return null;
+  }
+
+  function setDate(d){
+    var el = document.querySelector('[data-trace="date"]');
+    if (el) el.textContent = d;
+    try {
+      var u = new URL(location.href);
+      u.searchParams.set('d', d);
+      history.replaceState(null, '', u);
+    } catch(e){}
+  }
+
+  function showErr(msg){
+    err.textContent = msg;
+    err.hidden = false;
+    setTimeout(function(){ err.hidden = true; }, 4000);
+  }
+
+  function handle(text){
+    var d = parseDate(text);
+    if (d) { setDate(d); stop(); }
+    else {
+      var t = I18N[($('lang-select')||{}).value || 'en'];
+      showErr((t && t.invalid) || 'Invalid date code');
+    }
+  }
+
+  function tick(){
+    if (!open) return;
+    if (video.readyState >= 2) {
+      if (detector) {
+        detector.detect(video).then(function(codes){
+          if (open && codes && codes.length) handle(codes[0].rawValue);
+        }).catch(function(){});
+      } else if (window.jsQR) {
+        var c = $('scan-canvas');
+        var w = 320, h = video.videoHeight ? Math.round(320 * video.videoHeight / video.videoWidth) : 240;
+        c.width = w; c.height = h;
+        var ctx = c.getContext('2d');
+        ctx.drawImage(video, 0, 0, w, h);
+        try {
+          var img = ctx.getImageData(0, 0, w, h);
+          var code = window.jsQR(img.data, w, h, {inversionAttempts:'dontInvert'});
+          if (code && code.data) handle(code.data);
+        } catch(e){}
+      }
+    }
+    timer = setTimeout(tick, 180);
+  }
+
+  function loadJsQR(){
+    if (window.jsQR || $('jsqr-lib')) return;
+    var s = document.createElement('script');
+    s.id = 'jsqr-lib';
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    document.head.appendChild(s);
+  }
+
+  function start(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:'environment'}})
+      .then(function(s){
+        stream = s;
+        video.srcObject = s;
+        video.play().catch(function(){});
+        if ('BarcodeDetector' in window) {
+          try { detector = new BarcodeDetector({formats:['qr_code']}); } catch(e){ detector = null; }
+        }
+        if (!detector) loadJsQR();
+        tick();
+      })
+      .catch(function(){
+        var t = I18N[($('lang-select')||{}).value || 'en'];
+        showErr((t && t.manual) || 'Camera unavailable - use manual input');
+      });
+  }
+
+  function stop(){
+    open = false;
+    clearTimeout(timer);
+    if (stream) { stream.getTracks().forEach(function(tr){ tr.stop(); }); stream = null; }
+    ov.hidden = true;
+  }
+
+  btn.addEventListener('click', function(){
+    err.hidden = true;
+    input.value = '';
+    ov.hidden = false;
+    open = true;
+    start();
+  });
+  $('scan-cancel').addEventListener('click', stop);
+  ov.addEventListener('click', function(e){ if (e.target === ov) stop(); });
+  $('scan-ok').addEventListener('click', function(){
+    var d = parseDate(input.value);
+    if (d) { setDate(d); stop(); }
+    else {
+      var t = I18N[($('lang-select')||{}).value || 'en'];
+      showErr((t && t.invalid) || 'Invalid date code');
+    }
+  });
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') $('scan-ok').click(); });
 })();
 </script>
 </body>
